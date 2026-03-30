@@ -54,7 +54,7 @@ const Navbar = () => {
         <button type="button" className="brandMark" onClick={() => scrollTo('top')}>
             <img
               className="brandLogoImage"
-              src="/lumine-starworks-logo.svg"
+              src="/lumine-logo.png"
               alt="Lumine Starworks"
             />
           </button>
