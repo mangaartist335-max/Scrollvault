@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useRef } from 'react';
+import { motion } from 'framer-motion';
 import { duration, easing } from '../motion';
 
 const SOCIAL_LINKS = [
@@ -10,50 +10,11 @@ const SOCIAL_LINKS = [
 ];
 
 const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
   const dropdownRef = useRef(null);
-  const hoverOpenTimeoutRef = useRef(null);
-  const dropdownOpen = isOpen || isHovering;
-
-  useEffect(() => {
-    const clearHoverTimeout = () => {
-      if (hoverOpenTimeoutRef.current) {
-        clearTimeout(hoverOpenTimeoutRef.current);
-        hoverOpenTimeoutRef.current = null;
-      }
-    };
-
-    const onPointerDown = (event) => {
-      if (!dropdownRef.current?.contains(event.target)) {
-        clearHoverTimeout();
-        setIsOpen(false);
-        setIsHovering(false);
-      }
-    };
-
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setIsOpen(false);
-    };
-
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      clearHoverTimeout();
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, []);
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (hoverOpenTimeoutRef.current) {
-      clearTimeout(hoverOpenTimeoutRef.current);
-      hoverOpenTimeoutRef.current = null;
-    }
-    setIsOpen(false);
-    setIsHovering(false);
   };
 
   return (
@@ -78,61 +39,25 @@ const Navbar = () => {
           </button>
 
         <div className="siteNavLinks">
-          <div
-            className="socialMenu"
-            ref={dropdownRef}
-            onPointerEnter={() => {
-              if (hoverOpenTimeoutRef.current) clearTimeout(hoverOpenTimeoutRef.current);
-              hoverOpenTimeoutRef.current = setTimeout(() => {
-                setIsHovering(true);
-                hoverOpenTimeoutRef.current = null;
-              }, 150);
-            }}
-            onPointerLeave={() => {
-              if (hoverOpenTimeoutRef.current) {
-                clearTimeout(hoverOpenTimeoutRef.current);
-                hoverOpenTimeoutRef.current = null;
-              }
-              setIsHovering(false);
-              setIsOpen(false);
-            }}
-          >
-            <button
-              type="button"
-              className={`siteNavLink socialToggle ${dropdownOpen ? 'is-open' : ''}`}
-              onClick={() => setIsOpen((prev) => !prev)}
-              aria-haspopup="menu"
-              aria-expanded={dropdownOpen}
-            >
+          <div className="socialMenu" ref={dropdownRef}>
+            <span className="siteNavLink socialToggle">
               Social Media
-            </button>
+            </span>
 
-            <AnimatePresence>
-              {dropdownOpen && (
-                <motion.div
-                  className="socialDropdown"
-                  role="menu"
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                  transition={{ duration: duration.fast / 1000, ease: easing.standard }}
+            <div className="socialDropdown" role="menu">
+              {SOCIAL_LINKS.map((item) => (
+                <a
+                  key={item.label}
+                  className="socialDropdownLink"
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  role="menuitem"
                 >
-                  {SOCIAL_LINKS.map((item) => (
-                    <a
-                      key={item.label}
-                      className="socialDropdownLink"
-                      href={item.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      role="menuitem"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.label}
-                    </a>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  {item.label}
+                </a>
+              ))}
+            </div>
           </div>
 
           <button type="button" className="siteNavLink" onClick={() => scrollTo('applications')}>
