@@ -1,0 +1,118 @@
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { duration, easing } from '../motion';
+
+const SOCIAL_LINKS = [
+  { label: 'Instagram', href: 'https://www.instagram.com/lumine8264/' },
+  { label: 'TikTok', href: 'https://www.tiktok.com/@genesiscreationgaming' },
+  { label: 'Twitter', href: 'https://x.com/X419817X' },
+  { label: 'YouTube', href: 'https://www.youtube.com/@luminestar234' },
+];
+
+const Navbar = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      if (!dropdownRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+
+  const scrollTo = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setIsOpen(false);
+  };
+
+  return (
+    <motion.header
+      className="siteNavWrap"
+      initial={{ opacity: 0, y: -18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: duration.slow / 1000, ease: easing.enter }}
+    >
+      <motion.nav
+        className="siteNav"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: duration.base / 1000, ease: easing.standard, delay: 0.08 }}
+      >
+        <button type="button" className="brandMark" onClick={() => scrollTo('top')}>
+          <span className="brandOrb" aria-hidden="true" />
+          <span className="brandText">
+            <strong>Lumine</strong>
+            <span>Starworks</span>
+          </span>
+        </button>
+
+        <div className="siteNavLinks">
+          <div className="socialMenu" ref={dropdownRef}>
+            <button
+              type="button"
+              className={`siteNavLink socialToggle ${isOpen ? 'is-open' : ''}`}
+              onClick={() => setIsOpen((prev) => !prev)}
+              aria-haspopup="menu"
+              aria-expanded={isOpen}
+            >
+              Social Media
+            </button>
+
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  className="socialDropdown"
+                  role="menu"
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: duration.fast / 1000, ease: easing.standard }}
+                >
+                  {SOCIAL_LINKS.map((item) => (
+                    <a
+                      key={item.label}
+                      className="socialDropdownLink"
+                      href={item.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      role="menuitem"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.label}
+                    </a>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button type="button" className="siteNavLink" onClick={() => scrollTo('applications')}>
+            Home
+          </button>
+          <button type="button" className="siteNavLink" onClick={() => scrollTo('applications')}>
+            Games
+          </button>
+          <button type="button" className="siteNavLink" onClick={() => scrollTo('about-us')}>
+            About Us
+          </button>
+        </div>
+      </motion.nav>
+    </motion.header>
+  );
+};
+
+export default Navbar;
+

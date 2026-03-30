@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import GenesisX from './components/GenesisX';
 import Applications from './components/Applications';
+import AboutSection from './components/AboutSection';
 import { DEFAULT_ORB_CONTROLS } from './orbControls';
 
 const MODE_STORAGE_KEY = 'genesisx:view-mode';
@@ -64,6 +66,8 @@ function App() {
 
   return (
     <div className="page">
+      <div id="top" />
+      <Navbar />
       <Hero
         mode={mode}
         onModeChange={setMode}
@@ -80,6 +84,7 @@ function App() {
         <>
           <GenesisX />
           <Applications />
+          <AboutSection />
         </>
       )}
     </div>
