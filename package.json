@@ -1,0 +1,24 @@
+{
+  "name": "genesis-x-website",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host --port 5182 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host --port 5182 --strictPort"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^7.2.4"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "framer-motion": "^12.10.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.182.0"
+  }
+}
+
