@@ -60,7 +60,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          <button type="button" className="siteNavLink" onClick={() => scrollTo('applications')}>
+          <button type="button" className="siteNavLink" onClick={() => scrollTo('top')}>
             Home
           </button>
           <button type="button" className="siteNavLink" onClick={() => scrollTo('applications')}>
