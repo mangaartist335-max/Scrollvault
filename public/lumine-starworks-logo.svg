@@ -1,0 +1,43 @@
+<svg width="340" height="110" viewBox="0 0 340 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="340" height="110" rx="24" fill="#11141E"/>
+  <g transform="translate(18 12)">
+    <circle cx="42" cy="42" r="34" fill="url(#orbGlow)"/>
+    <circle cx="42" cy="42" r="28" fill="url(#orbCore)"/>
+    <path
+      d="M21 42C24 26 38 17 54 20C67 22 76 31 77 43C78 55 69 66 56 69C43 72 28 67 22 55"
+      stroke="rgba(255,255,255,0.78)"
+      stroke-width="4.5"
+      stroke-linecap="round"
+    />
+    <path
+      d="M27 27C37 21 50 21 60 28C70 35 73 48 69 59"
+      stroke="#7EE6FF"
+      stroke-width="3.5"
+      stroke-linecap="round"
+      opacity="0.9"
+    />
+    <circle cx="57" cy="30" r="3.5" fill="white"/>
+  </g>
+  <g fill="white">
+    <text x="100" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">
+      Lumine
+    </text>
+    <text x="100" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">
+      Starworks
+    </text>
+  </g>
+  <defs>
+    <radialGradient id="orbCore" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 34) rotate(45) scale(45)">
+      <stop stop-color="#8AF1FF"/>
+      <stop offset="0.42" stop-color="#5AC9FF"/>
+      <stop offset="0.78" stop-color="#4778FF"/>
+      <stop offset="1" stop-color="#3E4EF8"/>
+    </radialGradient>
+    <radialGradient id="orbGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(40 38) rotate(55) scale(52)">
+      <stop stop-color="#B8F8FF" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#60CCFF" stop-opacity="0.92"/>
+      <stop offset="1" stop-color="#365EFF" stop-opacity="0.92"/>
+    </radialGradient>
+  </defs>
+</svg>
+

@@ -52,12 +52,12 @@ const Navbar = () => {
         transition={{ duration: duration.base / 1000, ease: easing.standard, delay: 0.08 }}
       >
         <button type="button" className="brandMark" onClick={() => scrollTo('top')}>
-          <span className="brandOrb" aria-hidden="true" />
-          <span className="brandText">
-            <strong>Lumine</strong>
-            <span>Starworks</span>
-          </span>
-        </button>
+            <img
+              className="brandLogoImage"
+              src="/lumine-starworks-logo.svg"
+              alt="Lumine Starworks"
+            />
+          </button>
 
         <div className="siteNavLinks">
           <div className="socialMenu" ref={dropdownRef}>
