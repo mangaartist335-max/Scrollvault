@@ -11,12 +11,24 @@ const SOCIAL_LINKS = [
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const dropdownRef = useRef(null);
+  const hoverOpenTimeoutRef = useRef(null);
+  const dropdownOpen = isOpen || isHovering;
 
   useEffect(() => {
+    const clearHoverTimeout = () => {
+      if (hoverOpenTimeoutRef.current) {
+        clearTimeout(hoverOpenTimeoutRef.current);
+        hoverOpenTimeoutRef.current = null;
+      }
+    };
+
     const onPointerDown = (event) => {
       if (!dropdownRef.current?.contains(event.target)) {
+        clearHoverTimeout();
         setIsOpen(false);
+        setIsHovering(false);
       }
     };
 
@@ -27,6 +39,7 @@ const Navbar = () => {
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
     return () => {
+      clearHoverTimeout();
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
@@ -35,7 +48,12 @@ const Navbar = () => {
   const scrollTo = (id) => {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (hoverOpenTimeoutRef.current) {
+      clearTimeout(hoverOpenTimeoutRef.current);
+      hoverOpenTimeoutRef.current = null;
+    }
     setIsOpen(false);
+    setIsHovering(false);
   };
 
   return (
@@ -60,19 +78,37 @@ const Navbar = () => {
           </button>
 
         <div className="siteNavLinks">
-          <div className="socialMenu" ref={dropdownRef}>
+          <div
+            className="socialMenu"
+            ref={dropdownRef}
+            onPointerEnter={() => {
+              if (hoverOpenTimeoutRef.current) clearTimeout(hoverOpenTimeoutRef.current);
+              hoverOpenTimeoutRef.current = setTimeout(() => {
+                setIsHovering(true);
+                hoverOpenTimeoutRef.current = null;
+              }, 150);
+            }}
+            onPointerLeave={() => {
+              if (hoverOpenTimeoutRef.current) {
+                clearTimeout(hoverOpenTimeoutRef.current);
+                hoverOpenTimeoutRef.current = null;
+              }
+              setIsHovering(false);
+              setIsOpen(false);
+            }}
+          >
             <button
               type="button"
-              className={`siteNavLink socialToggle ${isOpen ? 'is-open' : ''}`}
+              className={`siteNavLink socialToggle ${dropdownOpen ? 'is-open' : ''}`}
               onClick={() => setIsOpen((prev) => !prev)}
               aria-haspopup="menu"
-              aria-expanded={isOpen}
+              aria-expanded={dropdownOpen}
             >
               Social Media
             </button>
 
             <AnimatePresence>
-              {isOpen && (
+              {dropdownOpen && (
                 <motion.div
                   className="socialDropdown"
                   role="menu"
