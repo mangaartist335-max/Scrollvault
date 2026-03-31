@@ -27,11 +27,9 @@ const apps = [
     iconGlow: 'rgba(124,58,237,0.35)',
   },
   {
-    title: 'Music + Video',
-    tagline:
-      "Have Spotify's, Soundcloud's and your mp3's songs offline for free! You can even make your own music as well and make it online!",
-    modal:
-      "Have Spotify's, Soundcloud's and your mp3's songs offline for free! You can even make your own music as well and make it online!",
+    title: 'MusicMaxxer',
+    tagline: 'The only limit is your imagination.',
+    modal: 'The only limit is your imagination.',
     Icon: MusicVideoIcon,
     iconGlow: 'rgba(59,130,246,0.30)',
   },

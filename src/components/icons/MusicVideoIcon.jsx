@@ -1,6 +1,6 @@
 export default function MusicVideoIcon() {
   return (
-    <svg viewBox="0 0 64 64" fill="none" role="img" aria-label="Music + Video" shapeRendering="geometricPrecision">
+    <svg viewBox="0 0 64 64" fill="none" role="img" aria-label="MusicMaxxer" shapeRendering="geometricPrecision">
       <rect
         x="14"
         y="18"
