@@ -1,5 +1,5 @@
 /**
- * Genesis X — Motion Design System
+ * Lumine Starworks — Motion Design System
  * Apple-minimal + cinematic motion tokens
  */
 

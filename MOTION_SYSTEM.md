@@ -1,7 +1,7 @@
-# Genesis X — Motion Design System
+# Lumine Starworks — Motion Design System
 
 ## Overview
-A comprehensive, Apple-clean + cinematic motion system implemented across the entire Genesis X landing page. The system prioritizes smooth, intentional animations that feel premium while respecting user preferences and performance.
+A comprehensive, Apple-clean + cinematic motion system implemented across the entire Lumine Starworks landing page. The system prioritizes smooth, intentional animations that feel premium while respecting user preferences and performance.
 
 ## Architecture
 

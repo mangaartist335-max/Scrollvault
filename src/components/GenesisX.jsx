@@ -22,7 +22,7 @@ const GenesisX = () => {
               viewport={{ once: true }}
               variants={withReducedMotion(fadeIn)}
             >
-              GENESIS X
+              LUMINE STARWORKS
             </motion.p>
             <motion.h2
               initial="hidden"
