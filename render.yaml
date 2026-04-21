@@ -1,0 +1,12 @@
+# Render Blueprint: deploy the Node API from /server (not the Vite frontend).
+# Dashboard: New → Blueprint → connect repo, or paste this file and apply.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: scrollvault-backend
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
