@@ -382,4 +382,86 @@ router.get('/twitter/callback', async (req, res) => {
   }
 });
 
+// ─── TikTok ──────────────────────────────────────────────────────────
+
+router.get('/tiktok', (req, res) => {
+  const fromPage = req.query.from === 'login' ? 'login' : 'signup';
+  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  if (!clientKey || !clientSecret) {
+    return redirectConfigError(res, frontendBase, 'TikTok sign-in is not configured on the server.', fromPage);
+  }
+
+  const verifier = generateCodeVerifier();
+  const challenge = generateCodeChallenge(verifier);
+  const state = createState('tiktok', { codeVerifier: verifier, fromPage, frontendBase });
+  const redirectUri = `${publicBaseUrl(req)}/api/auth/tiktok/callback`;
+  const params = new URLSearchParams({
+    client_key: clientKey,
+    response_type: 'code',
+    scope: 'user.info.basic',
+    redirect_uri: redirectUri,
+    state,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+  });
+  res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${params}`);
+});
+
+router.get('/tiktok/callback', async (req, res) => {
+  const { code, state } = req.query;
+  if (!code || !state) return redirectError(res, DEFAULT_FRONTEND, 'Missing code or state');
+
+  const rec = pending.get(state);
+  pending.delete(state);
+  if (!rec || rec.provider !== 'tiktok' || !rec.codeVerifier) {
+    return redirectError(res, DEFAULT_FRONTEND, 'Invalid or expired session');
+  }
+  const frontendBase = rec.frontendBase || DEFAULT_FRONTEND;
+
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  const redirectUri = `${publicBaseUrl(req)}/api/auth/tiktok/callback`;
+
+  try {
+    const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_key: clientKey,
+        client_secret: clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+        code_verifier: rec.codeVerifier,
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      console.error('TikTok token:', tokenData);
+      return redirectError(res, frontendBase, 'Could not sign in with TikTok');
+    }
+
+    const profileRes = await fetch(
+      'https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url',
+      { headers: { Authorization: `Bearer ${tokenData.access_token}` } }
+    );
+    const profileData = await profileRes.json();
+    const tt = profileData.data?.user;
+    if (!tt?.open_id) return redirectError(res, frontendBase, 'Could not read TikTok profile');
+
+    const email = `tiktok_${tt.open_id}@oauth.scrollvault.invalid`;
+    const user = await findOrCreateUser({
+      email,
+      name: tt.display_name || `TikTok User`,
+    });
+    const token = signToken(user.id);
+    redirectWithToken(res, frontendBase, token, user);
+  } catch (err) {
+    console.error('TikTok callback:', err);
+    redirectError(res, frontendBase || DEFAULT_FRONTEND, 'Sign-in failed');
+  }
+});
+
 export default router;

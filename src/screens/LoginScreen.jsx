@@ -161,6 +161,7 @@ export default function LoginScreen() {
             { name: 'Google', icon: 'G', cls: 'border-vault-border-light hover:border-vault-cyan/30' },
             { name: 'Facebook', icon: 'f', cls: 'bg-vault-facebook hover:brightness-110' },
             { name: 'Twitter', icon: '𝕏', cls: 'border-vault-border-light hover:border-vault-cyan/30' },
+            { name: 'TikTok', icon: '♪', cls: 'border-vault-border-light hover:border-vault-cyan/30' },
           ].map((s) => (
             <motion.button
               key={s.name}
