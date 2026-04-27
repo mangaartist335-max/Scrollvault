@@ -164,7 +164,7 @@ export default function DashboardScreen() {
 
   const handleLogout = useCallback(() => {
     clearToken();
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   }, [navigate]);
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'Scroller';
