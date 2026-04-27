@@ -3,25 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { setToken } from '../lib/api';
 import AmbientBackground from '../components/AmbientBackground';
 
-// #region agent log
-const debugLogFront = (hyp, msg, data) => {
-  fetch('http://127.0.0.1:7396/ingest/ebd3c031-3b02-465b-864f-2114d507da85',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'57b68c'},body:JSON.stringify({sessionId:'57b68c',location:'AuthCallback.jsx',message:msg,data,timestamp:Date.now(),hypothesisId:hyp})}).catch(()=>{});
-};
-// #endregion
+/**
+ * Captured once at module load (before Strict Mode remount clears window.location.hash).
+ * OAuth always lands here via full page redirect, so this is the fragment we must parse.
+ */
+const SV_OAUTH_FRAGMENT =
+  typeof window !== 'undefined' ? (window.location.hash || '').replace(/^#/, '') : '';
+
+/** Survives React 18 Strict Mode (remount) so the OAuth handler does not run twice. */
+let __svOauthHandlerStarted = false;
 
 export default function AuthCallbackScreen() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const hash = window.location.hash?.replace(/^#/, '') || '';
-    const params = new URLSearchParams(hash);
+    if (__svOauthHandlerStarted) return;
+    __svOauthHandlerStarted = true;
+
+    const effective = SV_OAUTH_FRAGMENT;
+    const params = new URLSearchParams(effective);
     const token = params.get('token');
     const userRaw = params.get('user');
     const err = params.get('error');
-
-    // #region agent log
-    debugLogFront('E', 'AuthCallback loaded', { hash, hasToken: !!token, hasUser: !!userRaw, err });
-    // #endregion
 
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
 
@@ -34,21 +37,12 @@ export default function AuthCallbackScreen() {
         const user = JSON.parse(decodeURIComponent(userRaw));
         setToken(token);
         localStorage.setItem('sv_user', JSON.stringify(user));
-        // #region agent log
-        debugLogFront('E', 'AuthCallback success', { userId: user.id });
-        // #endregion
         navigate('/dashboard', { replace: true });
       } catch (e) {
-        // #region agent log
-        debugLogFront('E', 'AuthCallback parsing error', { error: String(e), userRaw });
-        // #endregion
         navigate(`/login?error=${encodeURIComponent('Could not complete sign-in')}`, { replace: true });
       }
       return;
     }
-    // #region agent log
-    debugLogFront('E', 'AuthCallback missing data', { token, userRaw });
-    // #endregion
     navigate('/login', { replace: true });
   }, [navigate]);
 

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import dns from 'node:dns/promises';
 import authRoutes from './routes/auth.js';
 import socialAuthRoutes from './routes/socialAuth.js';
 import balanceRoutes from './routes/balance.js';
@@ -52,7 +53,22 @@ app.use('/api/oauth', oauthRoutes);
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
-// Bind to all interfaces so Render / Docker can route traffic (not just localhost).
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`ScrollVault API listening on 0.0.0.0:${PORT}`);
-});
+async function start() {
+  const su = process.env.SUPABASE_URL;
+  if (su) {
+    try {
+      const host = new URL(su).hostname;
+      await dns.lookup(host);
+    } catch (e) {
+      console.error(
+        '[FATAL] SUPABASE_URL host does not resolve in DNS. Copy the exact "Project URL" from Supabase → Project Settings → API into server/.env and Render.',
+        e?.code || e?.message
+      );
+    }
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`ScrollVault API listening on 0.0.0.0:${PORT}`);
+  });
+}
+
+start();

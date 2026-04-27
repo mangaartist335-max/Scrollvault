@@ -6,12 +6,6 @@ import supabase from '../db.js';
 
 const router = Router();
 
-// #region agent log
-const debugLog = (hyp, msg, data) => {
-  fetch('http://127.0.0.1:7396/ingest/ebd3c031-3b02-465b-864f-2114d507da85',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'57b68c'},body:JSON.stringify({sessionId:'57b68c',location:'socialAuth.js',message:msg,data,timestamp:Date.now(),hypothesisId:hyp})}).catch(()=>{});
-};
-// #endregion
-
 const DEFAULT_FRONTEND = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 /** In-memory OAuth state for sign-in (no logged-in user yet). */
@@ -85,9 +79,6 @@ async function findOrCreateUser({ email, name }) {
 
   // Backward-compatible path: DB may not yet have email_verified column.
   if (error?.code === 'PGRST204') {
-    // #region agent log
-    debugLog('D', 'Fallback insert without email_verified', { reason: error.message });
-    // #endregion
     console.log('[findOrCreateUser] attempting fallback insert');
     ({ data: user, error } = await supabase
       .from('users')
@@ -155,16 +146,10 @@ router.get('/google', (req, res) => {
 router.get('/google/callback', async (req, res) => {
   const { code, state } = req.query;
   console.log('[google/callback] hit', { hasCode: !!code, hasState: !!state });
-  // #region agent log
-  debugLog('A', 'Google callback start', { code: !!code, state: !!state, query: req.query });
-  // #endregion
   if (!code || !state) return redirectError(res, DEFAULT_FRONTEND, 'Missing code or state');
 
   const rec = pending.get(state);
   console.log('[google/callback] pending lookup', { found: !!rec, provider: rec?.provider, pendingSize: pending.size });
-  // #region agent log
-  debugLog('A', 'Pending lookup', { state, found: !!rec, expectedProvider: rec?.provider, pendingSize: pending.size });
-  // #endregion
   pending.delete(state);
   if (!rec || rec.provider !== 'google') {
     console.log('[google/callback] invalid session');
@@ -190,9 +175,6 @@ router.get('/google/callback', async (req, res) => {
     });
     const tokenData = await tokenRes.json();
     console.log('[google/callback] token response', { ok: tokenRes.ok, hasAccessToken: !!tokenData.access_token, error: tokenData.error });
-    // #region agent log
-    debugLog('B', 'Token exchange result', { hasAccess: !!tokenData.access_token, tokenData });
-    // #endregion
     if (!tokenData.access_token) {
       console.error('Google token exchange:', tokenData);
       return redirectError(res, frontendBase, 'Could not sign in with Google');
@@ -203,27 +185,26 @@ router.get('/google/callback', async (req, res) => {
     });
     const profile = await profileRes.json();
     console.log('[google/callback] profile response', { ok: profileRes.ok, hasEmail: !!profile.email });
-    // #region agent log
-    debugLog('C', 'Profile fetch result', { hasEmail: !!profile.email });
-    // #endregion
     const email = profile.email;
     if (!email) return redirectError(res, frontendBase, 'Google did not return an email for this account');
 
-    // #region agent log
-    debugLog('D', 'Before findOrCreateUser', { email: profile.email });
-    // #endregion
     const user = await findOrCreateUser({
       email,
       name: profile.name || profile.given_name,
     });
-    // #region agent log
-    debugLog('D', 'After findOrCreateUser', { userId: user.id });
-    // #endregion
     const token = signToken(user.id);
     redirectWithToken(res, frontendBase, token, user);
   } catch (err) {
     console.error('Google callback:', err);
-    redirectError(res, frontendBase || DEFAULT_FRONTEND, 'Sign-in failed');
+    const causeCode = err?.cause?.code;
+    const isNetwork =
+      err?.message === 'fetch failed' ||
+      String(err).includes('fetch failed') ||
+      ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'].includes(causeCode);
+    const msg = isNetwork
+      ? 'Could not reach the database. Check your connection or Supabase settings.'
+      : 'Sign-in failed';
+    redirectError(res, frontendBase || DEFAULT_FRONTEND, msg);
   }
 });
 
