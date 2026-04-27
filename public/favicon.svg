@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="orbCore" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
+      <stop offset="35%" stop-color="#CDEFFF" stop-opacity="1" />
+      <stop offset="70%" stop-color="#7CCBFF" stop-opacity="1" />
+      <stop offset="100%" stop-color="#1E78FF" stop-opacity="1" />
+    </radialGradient>
+    <radialGradient id="orbGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#63B3FF" stop-opacity="0.55" />
+      <stop offset="60%" stop-color="#1E78FF" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#1E78FF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0b0d10" />
+  <circle cx="32" cy="32" r="28" fill="url(#orbGlow)" />
+  <circle cx="32" cy="32" r="18" fill="url(#orbCore)" />
+  <ellipse cx="26" cy="24" rx="6" ry="3.5" fill="#FFFFFF" opacity="0.55" />
+</svg>

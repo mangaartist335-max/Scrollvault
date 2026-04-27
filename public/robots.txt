@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lumine-starworks.vercel.app/sitemap.xml
