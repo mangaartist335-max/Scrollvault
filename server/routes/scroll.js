@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import auth from '../middleware/auth.js';
 import supabase from '../db.js';
+import { withUserLock } from '../lib/userLocks.js';
 
 const router = Router();
 
@@ -28,79 +29,91 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid platform' });
     }
 
-    const now = Date.now();
-    const last = lastScrollAt.get(req.userId) ?? 0;
-    if (now - last < RATE_LIMIT_MS) {
-      const waitMs = RATE_LIMIT_MS - (now - last);
-      return res.status(429).json({
-        error: `Slow down. Try again in ${Math.ceil(waitMs / 1000)}s.`,
-        retryAfterMs: waitMs,
+    const result = await withUserLock(req.userId, async () => {
+      const now = Date.now();
+      const last = lastScrollAt.get(req.userId) ?? 0;
+      if (now - last < RATE_LIMIT_MS) {
+        const waitMs = RATE_LIMIT_MS - (now - last);
+        return {
+          status: 429,
+          body: {
+            error: `Slow down. Try again in ${Math.ceil(waitMs / 1000)}s.`,
+            retryAfterMs: waitMs,
+          },
+        };
+      }
+
+      const { data: linked } = await supabase
+        .from('linked_accounts')
+        .select('id')
+        .eq('user_id', req.userId)
+        .eq('platform', platform)
+        .single();
+
+      if (!linked) {
+        return { status: 403, body: { error: `${platform} is not connected` } };
+      }
+
+      const { data: todayEvents } = await supabase
+        .from('scroll_events')
+        .select('earned')
+        .eq('user_id', req.userId)
+        .gte('created_at', startOfTodayIso());
+
+      const earnedToday = (todayEvents ?? []).reduce(
+        (sum, row) => sum + Number(row.earned ?? 0),
+        0
+      );
+
+      if (earnedToday >= DAILY_EARN_CAP) {
+        return {
+          status: 429,
+          body: {
+            error: `Daily cap reached. You have earned $${earnedToday.toFixed(2)} today (max $${DAILY_EARN_CAP.toFixed(2)}). Come back tomorrow!`,
+            cap: DAILY_EARN_CAP,
+            earnedToday: Number(earnedToday.toFixed(2)),
+          },
+        };
+      }
+
+      const baseEarn = platform === 'tiktok' ? TIKTOK_EARN_AMOUNT : EARN_AMOUNT;
+      const remainingToday = DAILY_EARN_CAP - earnedToday;
+      const earned = Number(Math.min(baseEarn, remainingToday).toFixed(2));
+
+      const { data: bal } = await supabase
+        .from('balances')
+        .select('amount')
+        .eq('user_id', req.userId)
+        .single();
+
+      const currentAmount = bal?.amount ?? 0;
+      const newAmount = Number((currentAmount + earned).toFixed(2));
+
+      await supabase
+        .from('balances')
+        .update({ amount: newAmount })
+        .eq('user_id', req.userId);
+
+      await supabase.from('scroll_events').insert({
+        user_id: req.userId,
+        platform,
+        scroll_amount: scrollAmount || 0,
+        earned,
       });
-    }
 
-    const { data: linked } = await supabase
-      .from('linked_accounts')
-      .select('id')
-      .eq('user_id', req.userId)
-      .eq('platform', platform)
-      .single();
+      lastScrollAt.set(req.userId, now);
 
-    if (!linked) {
-      return res.status(403).json({ error: `${platform} is not connected` });
-    }
-
-    const { data: todayEvents } = await supabase
-      .from('scroll_events')
-      .select('earned')
-      .eq('user_id', req.userId)
-      .gte('created_at', startOfTodayIso());
-
-    const earnedToday = (todayEvents ?? []).reduce(
-      (sum, row) => sum + Number(row.earned ?? 0),
-      0
-    );
-
-    if (earnedToday >= DAILY_EARN_CAP) {
-      return res.status(429).json({
-        error: `Daily cap reached. You have earned $${earnedToday.toFixed(2)} today (max $${DAILY_EARN_CAP.toFixed(2)}). Come back tomorrow!`,
-        cap: DAILY_EARN_CAP,
-        earnedToday: Number(earnedToday.toFixed(2)),
-      });
-    }
-
-    const baseEarn = platform === 'tiktok' ? TIKTOK_EARN_AMOUNT : EARN_AMOUNT;
-    const remainingToday = DAILY_EARN_CAP - earnedToday;
-    const earned = Number(Math.min(baseEarn, remainingToday).toFixed(2));
-
-    const { data: bal } = await supabase
-      .from('balances')
-      .select('amount')
-      .eq('user_id', req.userId)
-      .single();
-
-    const currentAmount = bal?.amount ?? 0;
-    const newAmount = Number((currentAmount + earned).toFixed(2));
-
-    await supabase
-      .from('balances')
-      .update({ amount: newAmount })
-      .eq('user_id', req.userId);
-
-    await supabase.from('scroll_events').insert({
-      user_id: req.userId,
-      platform,
-      scroll_amount: scrollAmount || 0,
-      earned,
+      return {
+        body: {
+          earned,
+          balance: newAmount,
+          earnedToday: Number((earnedToday + earned).toFixed(2)),
+          dailyCap: DAILY_EARN_CAP,
+        },
+      };
     });
 
-    lastScrollAt.set(req.userId, now);
-
-    res.json({
-      earned,
-      balance: newAmount,
-      earnedToday: Number((earnedToday + earned).toFixed(2)),
-      dailyCap: DAILY_EARN_CAP,
-    });
+    res.status(result.status ?? 200).json(result.body);
   } catch (err) {
     console.error('Scroll event error:', err);
     res.status(500).json({ error: 'Server error' });
