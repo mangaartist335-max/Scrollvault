@@ -38,22 +38,26 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    const { data: linked } = await supabase
+    const { data: linked, error: linkedError } = await supabase
       .from('linked_accounts')
       .select('id')
       .eq('user_id', req.userId)
       .eq('platform', platform)
-      .single();
+      .maybeSingle();
+
+    if (linkedError) throw linkedError;
 
     if (!linked) {
       return res.status(403).json({ error: `${platform} is not connected` });
     }
 
-    const { data: todayEvents } = await supabase
+    const { data: todayEvents, error: todayEventsError } = await supabase
       .from('scroll_events')
       .select('earned')
       .eq('user_id', req.userId)
       .gte('created_at', startOfTodayIso());
+
+    if (todayEventsError) throw todayEventsError;
 
     const earnedToday = (todayEvents ?? []).reduce(
       (sum, row) => sum + Number(row.earned ?? 0),
@@ -72,26 +76,32 @@ router.post('/', auth, async (req, res) => {
     const remainingToday = DAILY_EARN_CAP - earnedToday;
     const earned = Number(Math.min(baseEarn, remainingToday).toFixed(2));
 
-    const { data: bal } = await supabase
+    const { data: bal, error: balanceError } = await supabase
       .from('balances')
       .select('amount')
       .eq('user_id', req.userId)
       .single();
 
+    if (balanceError) throw balanceError;
+
     const currentAmount = bal?.amount ?? 0;
     const newAmount = Number((currentAmount + earned).toFixed(2));
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('balances')
       .update({ amount: newAmount })
       .eq('user_id', req.userId);
 
-    await supabase.from('scroll_events').insert({
+    if (updateError) throw updateError;
+
+    const { error: insertError } = await supabase.from('scroll_events').insert({
       user_id: req.userId,
       platform,
       scroll_amount: scrollAmount || 0,
       earned,
     });
+
+    if (insertError) throw insertError;
 
     lastScrollAt.set(req.userId, now);
 
