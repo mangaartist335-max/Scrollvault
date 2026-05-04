@@ -13,6 +13,7 @@ const RATE_LIMIT_MS = Number(process.env.SCROLL_RATE_LIMIT_MS ?? 5000);
 
 /** In-memory map: userId -> last scroll timestamp (ms). */
 const lastScrollAt = new Map();
+const scrollLocks = new Map();
 
 function startOfTodayIso() {
   const d = new Date();
@@ -20,7 +21,27 @@ function startOfTodayIso() {
   return d.toISOString();
 }
 
-router.post('/', auth, async (req, res) => {
+export function withUserScrollLock(userId, task) {
+  const previous = scrollLocks.get(userId) ?? Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => {
+    release = resolve;
+  });
+  const waitForPrevious = previous.catch(() => {});
+  const tail = waitForPrevious.then(() => current);
+  scrollLocks.set(userId, tail);
+
+  return waitForPrevious
+    .then(task)
+    .finally(() => {
+      release();
+      if (scrollLocks.get(userId) === tail) {
+        scrollLocks.delete(userId);
+      }
+    });
+}
+
+router.post('/', auth, async (req, res) => withUserScrollLock(req.userId, async () => {
   try {
     const { platform, scrollAmount } = req.body;
 
@@ -105,6 +126,6 @@ router.post('/', auth, async (req, res) => {
     console.error('Scroll event error:', err);
     res.status(500).json({ error: 'Server error' });
   }
-});
+}));
 
 export default router;
