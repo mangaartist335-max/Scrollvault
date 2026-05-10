@@ -15,7 +15,7 @@ CREATE INDEX idx_users_email ON users(email);
 -- Balances table
 CREATE TABLE balances (
   user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  amount INTEGER NOT NULL DEFAULT 0 CHECK (amount >= 0 AND amount <= 20),
+  amount NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -40,7 +40,7 @@ CREATE TABLE scroll_events (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   platform TEXT NOT NULL,
   scroll_amount INTEGER,
-  earned INTEGER NOT NULL DEFAULT 0,
+  earned NUMERIC(10,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
