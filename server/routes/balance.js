@@ -7,6 +7,10 @@ const router = Router();
 
 const MIN_WITHDRAW = Number(process.env.MIN_WITHDRAW ?? 10);
 
+export function isSupportedWithdrawMethod(method) {
+  return method === 'PayPal';
+}
+
 // Setup PayPal Environment (Sandbox for now)
 const clientId = process.env.PAYPAL_CLIENT_ID;
 const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
@@ -50,9 +54,16 @@ router.post('/reset', auth, async (req, res) => {
 router.post('/withdraw', auth, async (req, res) => {
   try {
     const { amount, method, details } = req.body;
-    if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+    const withdrawAmount = Number(amount);
+    if (!Number.isFinite(withdrawAmount) || withdrawAmount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
 
-    if (amount < MIN_WITHDRAW) {
+    if (!isSupportedWithdrawMethod(method)) {
+      return res.status(400).json({ error: 'Unsupported withdrawal method' });
+    }
+
+    if (withdrawAmount < MIN_WITHDRAW) {
       return res
         .status(400)
         .json({ error: `Minimum withdrawal is $${MIN_WITHDRAW.toFixed(2)}` });
@@ -67,7 +78,7 @@ router.post('/withdraw', auth, async (req, res) => {
 
     if (balanceError) throw balanceError;
 
-    if (balanceData.amount < amount) {
+    if (balanceData.amount < withdrawAmount) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
@@ -85,10 +96,10 @@ router.post('/withdraw', auth, async (req, res) => {
         items: [{
           amount: {
             currency: "USD",
-            value: amount.toString()
+            value: withdrawAmount.toString()
           },
           receiver: details, // This is the user's PayPal email they typed in
-          note: `ScrollVault Cashout for $${amount}`
+          note: `ScrollVault Cashout for $${withdrawAmount}`
         }]
       });
 
@@ -109,15 +120,15 @@ router.post('/withdraw', auth, async (req, res) => {
       }
     }
 
-    // If PayPal succeeds (or if it's another method we are simulating), deduct the balance
+    const newBalance = Number((balanceData.amount - withdrawAmount).toFixed(2));
     const { error: updateError } = await supabase
       .from('balances')
-      .update({ amount: balanceData.amount - amount })
+      .update({ amount: newBalance })
       .eq('user_id', req.userId);
 
     if (updateError) throw updateError;
 
-    res.json({ success: true, newBalance: balanceData.amount - amount });
+    res.json({ success: true, newBalance });
   } catch (err) {
     console.error('Withdraw error:', err);
     res.status(500).json({ error: 'Server error' });
