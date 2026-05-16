@@ -6,6 +6,11 @@ import paypal from '@paypal/payouts-sdk';
 const router = Router();
 
 const MIN_WITHDRAW = Number(process.env.MIN_WITHDRAW ?? 10);
+const SUPPORTED_WITHDRAW_METHODS = new Set(['PayPal']);
+
+export function isSupportedWithdrawMethod(method) {
+  return SUPPORTED_WITHDRAW_METHODS.has(method);
+}
 
 // Setup PayPal Environment (Sandbox for now)
 const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -52,6 +57,10 @@ router.post('/withdraw', auth, async (req, res) => {
     const { amount, method, details } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
 
+    if (!isSupportedWithdrawMethod(method)) {
+      return res.status(400).json({ error: 'Unsupported withdrawal method' });
+    }
+
     if (amount < MIN_WITHDRAW) {
       return res
         .status(400)
@@ -71,45 +80,50 @@ router.post('/withdraw', auth, async (req, res) => {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
-    if (method === 'PayPal') {
-      // Call PayPal Payouts API
-      const request = new paypal.payouts.PayoutsPostRequest();
-      request.requestBody({
-        sender_batch_header: {
-          recipient_type: "EMAIL",
-          email_message: "ScrollVault Withdrawal - Your funds have arrived!",
-          note: "Enjoy your ScrollVault rewards!",
-          sender_batch_id: `sv_withdraw_${Date.now()}_${req.userId}`,
-          email_subject: "You received a payment from ScrollVault!"
+    // Call PayPal Payouts API before debiting the stored balance.
+    const request = new paypal.payouts.PayoutsPostRequest();
+    request.requestBody({
+      sender_batch_header: {
+        recipient_type: "EMAIL",
+        email_message: "ScrollVault Withdrawal - Your funds have arrived!",
+        note: "Enjoy your ScrollVault rewards!",
+        sender_batch_id: `sv_withdraw_${Date.now()}_${req.userId}`,
+        email_subject: "You received a payment from ScrollVault!"
+      },
+      items: [{
+        amount: {
+          currency: "USD",
+          value: amount.toString()
         },
-        items: [{
-          amount: {
-            currency: "USD",
-            value: amount.toString()
-          },
-          receiver: details, // This is the user's PayPal email they typed in
-          note: `ScrollVault Cashout for $${amount}`
-        }]
-      });
+        receiver: details, // This is the user's PayPal email they typed in
+        note: `ScrollVault Cashout for $${amount}`
+      }]
+    });
 
-      try {
-        const response = await client.execute(request);
-        console.log(`PayPal Payout successful. Batch ID: ${response.result.batch_header.payout_batch_id}`);
-      } catch (paypalError) {
-        console.error('PayPal Payout failed:', paypalError);
-        // Important: If PayPal fails, don't deduct the user's balance
-        const errorDetails = paypalError.message ? JSON.parse(paypalError.message) : { message: 'Unknown PayPal Error' };
-        
-        // Let's handle the specific "Authorization failed" error gracefully in the UI
-        if (errorDetails.name === 'AUTHORIZATION_ERROR') {
-             return res.status(400).json({ error: 'PayPal account needs Payouts permission. Check developer.paypal.com' });
+    try {
+      const response = await client.execute(request);
+      console.log(`PayPal Payout successful. Batch ID: ${response.result.batch_header.payout_batch_id}`);
+    } catch (paypalError) {
+      console.error('PayPal Payout failed:', paypalError);
+      // Important: If PayPal fails, don't deduct the user's balance
+      let errorDetails = { message: 'Unknown PayPal Error' };
+      if (paypalError.message) {
+        try {
+          errorDetails = JSON.parse(paypalError.message);
+        } catch {
+          errorDetails = { message: paypalError.message };
         }
-        
-        return res.status(400).json({ error: 'PayPal transfer failed. Please check your email/account details.' });
       }
+
+      // Let's handle the specific "Authorization failed" error gracefully in the UI
+      if (errorDetails.name === 'AUTHORIZATION_ERROR') {
+           return res.status(400).json({ error: 'PayPal account needs Payouts permission. Check developer.paypal.com' });
+      }
+
+      return res.status(400).json({ error: 'PayPal transfer failed. Please check your email/account details.' });
     }
 
-    // If PayPal succeeds (or if it's another method we are simulating), deduct the balance
+    // If PayPal succeeds, deduct the balance.
     const { error: updateError } = await supabase
       .from('balances')
       .update({ amount: balanceData.amount - amount })
