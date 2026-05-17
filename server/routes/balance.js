@@ -2,6 +2,7 @@ import { Router } from 'express';
 import auth from '../middleware/auth.js';
 import supabase from '../db.js';
 import paypal from '@paypal/payouts-sdk';
+import { isSupportedWithdrawMethod } from '../lib/withdrawalMethods.js';
 
 const router = Router();
 
@@ -51,6 +52,10 @@ router.post('/withdraw', auth, async (req, res) => {
   try {
     const { amount, method, details } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+    if (!isSupportedWithdrawMethod(method)) {
+      return res.status(400).json({ error: 'Unsupported withdrawal method' });
+    }
 
     if (amount < MIN_WITHDRAW) {
       return res
