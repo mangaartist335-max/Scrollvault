@@ -6,6 +6,11 @@ import paypal from '@paypal/payouts-sdk';
 const router = Router();
 
 const MIN_WITHDRAW = Number(process.env.MIN_WITHDRAW ?? 10);
+const SUPPORTED_WITHDRAW_METHODS = new Set(['PayPal']);
+
+export function isSupportedWithdrawMethod(method) {
+  return SUPPORTED_WITHDRAW_METHODS.has(method);
+}
 
 // Setup PayPal Environment (Sandbox for now)
 const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -51,6 +56,10 @@ router.post('/withdraw', auth, async (req, res) => {
   try {
     const { amount, method, details } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+    if (!isSupportedWithdrawMethod(method)) {
+      return res.status(400).json({ error: 'Unsupported withdrawal method' });
+    }
 
     if (amount < MIN_WITHDRAW) {
       return res
@@ -109,7 +118,7 @@ router.post('/withdraw', auth, async (req, res) => {
       }
     }
 
-    // If PayPal succeeds (or if it's another method we are simulating), deduct the balance
+    // Only deduct after a supported payout provider confirms the transfer was created.
     const { error: updateError } = await supabase
       .from('balances')
       .update({ amount: balanceData.amount - amount })
