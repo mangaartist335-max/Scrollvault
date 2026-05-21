@@ -7,7 +7,15 @@ import auth from '../middleware/auth.js';
 const router = Router();
 
 const FRONTEND = process.env.FRONTEND_URL || 'http://localhost:5173';
-const BASE = 'http://localhost:' + (process.env.PORT || 3001);
+
+export function publicBaseUrl(req) {
+  if (process.env.PUBLIC_BACKEND_URL) {
+    return process.env.PUBLIC_BACKEND_URL.replace(/\/$/, '');
+  }
+  const host = req.get('host');
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
+  return `${proto}://${host}`;
+}
 
 // ─── Platform-specific OAuth configs ────────────────────────────────
 
@@ -131,7 +139,7 @@ router.get('/:platform/connect', auth, async (req, res) => {
   if (!config) return res.status(400).json({ error: 'Unsupported platform' });
 
   const state = createState(req.userId, platform);
-  const redirectUri = BASE + config.callbackPath;
+  const redirectUri = `${publicBaseUrl(req)}${config.callbackPath}`;
 
   const params = new URLSearchParams({
     client_key: platform === 'tiktok' ? config.clientId() : undefined,
@@ -178,7 +186,7 @@ router.get('/:platform/callback', async (req, res) => {
   }
   pendingStates.delete(state);
 
-  const redirectUri = BASE + config.callbackPath;
+  const redirectUri = `${publicBaseUrl(req)}${config.callbackPath}`;
 
   try {
     // ── Exchange code for token ──
