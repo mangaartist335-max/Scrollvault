@@ -12,6 +12,7 @@ process.env.FRONTEND_URLS = 'https://preview.scrollvault.test, http://localhost:
 const socialAuth = await import('../routes/socialAuth.js');
 const balance = await import('../routes/balance.js');
 const admin = await import('../routes/admin.js');
+const oauth = await import('../routes/oauth.js');
 
 test('social auth returnTo is restricted to configured frontend origins', () => {
   assert.equal(
@@ -43,4 +44,28 @@ test('admin authorization requires the configured header value', () => {
   assert.equal(admin.isAdminKeyAuthorized('wrong', 'secret'), false);
   assert.equal(admin.isAdminKeyAuthorized(undefined, 'secret'), false);
   assert.equal(admin.isAdminKeyAuthorized('secret', undefined), false);
+});
+
+test('platform oauth callbacks use the deployed backend origin', () => {
+  const originalPublicBackendUrl = process.env.PUBLIC_BACKEND_URL;
+  const req = {
+    protocol: 'http',
+    get(name) {
+      if (name === 'host') return 'api.scrollvault.test';
+      if (name === 'x-forwarded-proto') return 'https';
+      return undefined;
+    },
+  };
+
+  delete process.env.PUBLIC_BACKEND_URL;
+  assert.equal(oauth.publicBaseUrl(req), 'https://api.scrollvault.test');
+
+  process.env.PUBLIC_BACKEND_URL = 'https://render.scrollvault.test/';
+  assert.equal(oauth.publicBaseUrl(req), 'https://render.scrollvault.test');
+
+  if (originalPublicBackendUrl === undefined) {
+    delete process.env.PUBLIC_BACKEND_URL;
+  } else {
+    process.env.PUBLIC_BACKEND_URL = originalPublicBackendUrl;
+  }
 });
