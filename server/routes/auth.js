@@ -4,9 +4,17 @@ import jwt from 'jsonwebtoken';
 import supabase from '../db.js';
 
 const router = Router();
+const RESERVED_OAUTH_EMAIL_DOMAIN = 'oauth.scrollvault.invalid';
 
 function signToken(userId) {
   return jwt.sign({ sub: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+}
+
+export function isReservedOAuthEmail(email) {
+  return String(email || '')
+    .trim()
+    .toLowerCase()
+    .endsWith(`@${RESERVED_OAUTH_EMAIL_DOMAIN}`);
 }
 
 // POST /api/auth/signup
@@ -15,6 +23,9 @@ router.post('/signup', async (req, res) => {
     const { name, email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
+    }
+    if (isReservedOAuthEmail(email)) {
+      return res.status(400).json({ error: 'Email address is reserved for OAuth sign-in' });
     }
 
     const hash = await bcrypt.hash(password, 12);

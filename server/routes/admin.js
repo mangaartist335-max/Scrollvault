@@ -3,13 +3,17 @@ import supabase from '../db.js';
 
 const router = Router();
 
+export function isAdminRequestAuthorized(req, expected) {
+  const key = req.headers['x-admin-key'];
+  return Boolean(expected && key && key === expected);
+}
+
 function requireAdmin(req, res, next) {
-  const key = req.query.key || req.headers['x-admin-key'];
   const expected = process.env.ADMIN_KEY;
   if (!expected) {
     return res.status(500).json({ error: 'ADMIN_KEY not configured on server' });
   }
-  if (!key || key !== expected) {
+  if (!isAdminRequestAuthorized(req, expected)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
