@@ -13,14 +13,7 @@ import {
 } from '../motion/variants';
 
 const PAYOUT_METHODS = [
-  'PayPal',
-  'TD Bank',
-  'BMO',
-  'PNC Bank',
-  'Chase Bank',
-  'Capital One 360',
-  'Bank of America',
-  'Republic Bank'
+  'PayPal'
 ];
 
 export default function WithdrawScreen() {
@@ -152,9 +145,9 @@ export default function WithdrawScreen() {
 
                 {/* Details Input */}
                 <AnimatedInput
-                  label={method === 'PayPal' ? 'PayPal Email' : 'Account/Routing Number or Details'}
+                  label="PayPal Email"
                   type="text"
-                  placeholder={method === 'PayPal' ? 'you@example.com' : 'Account info...'}
+                  placeholder="you@example.com"
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                 />
