@@ -7,6 +7,12 @@ import supabase from '../db.js';
 const router = Router();
 
 const DEFAULT_FRONTEND = process.env.FRONTEND_URL || 'http://localhost:5173';
+const LOCAL_FRONTEND_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
 
 /** In-memory OAuth state for sign-in (no logged-in user yet). */
 const pending = new Map();
@@ -18,6 +24,40 @@ function publicBaseUrl(req) {
   const host = req.get('host');
   const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
   return `${proto}://${host}`;
+}
+
+function normalizeFrontendOrigin(value) {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
+
+function allowedFrontendOrigins() {
+  const configured = [
+    DEFAULT_FRONTEND,
+    process.env.FRONTEND_URL,
+    ...(process.env.FRONTEND_URLS || '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+    ...LOCAL_FRONTEND_ORIGINS,
+  ];
+
+  return new Set(configured.map(normalizeFrontendOrigin).filter(Boolean));
+}
+
+export function resolveFrontendBase(returnTo) {
+  const fallback = normalizeFrontendOrigin(DEFAULT_FRONTEND) || 'http://localhost:5173';
+  const requested = normalizeFrontendOrigin(returnTo);
+  if (requested && allowedFrontendOrigins().has(requested)) {
+    return requested;
+  }
+  return fallback;
 }
 
 function signToken(userId) {
@@ -122,7 +162,7 @@ function redirectConfigError(res, frontendBase, message, from = 'signup') {
 
 router.get('/google', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const id = process.env.GOOGLE_CLIENT_ID;
   const secret = process.env.GOOGLE_CLIENT_SECRET;
   if (!id || !secret) {
@@ -212,7 +252,7 @@ router.get('/google/callback', async (req, res) => {
 
 router.get('/facebook', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const id = process.env.META_APP_ID;
   const secret = process.env.META_APP_SECRET;
   if (!id || !secret) {
@@ -284,7 +324,7 @@ router.get('/facebook/callback', async (req, res) => {
 
 router.get('/twitter', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const id = process.env.TWITTER_CLIENT_ID;
   const secret = process.env.TWITTER_CLIENT_SECRET;
   if (!id || !secret) {
@@ -367,7 +407,7 @@ router.get('/twitter/callback', async (req, res) => {
 
 router.get('/tiktok', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
   if (!clientKey || !clientSecret) {
