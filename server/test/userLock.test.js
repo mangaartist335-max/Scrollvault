@@ -10,6 +10,10 @@ function deferred() {
   return { promise, resolve };
 }
 
+function nextTurn() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 test('runExclusiveForKey serializes work for the same key', async () => {
   const firstGate = deferred();
   const events = [];
@@ -26,13 +30,14 @@ test('runExclusiveForKey serializes work for the same key', async () => {
     return 'second';
   });
 
-  await Promise.resolve();
+  await nextTurn();
   assert.deepEqual(events, ['first:start']);
 
   firstGate.resolve();
   assert.equal(await first, 'first');
   assert.equal(await second, 'second');
   assert.deepEqual(events, ['first:start', 'first:end', 'second:start']);
+  await nextTurn();
   assert.equal(activeLockCount(), 0);
 });
 
@@ -50,12 +55,14 @@ test('runExclusiveForKey allows different keys to run concurrently', async () =>
     events.push('user-2:start');
   });
 
+  await nextTurn();
   await second;
   assert.deepEqual(events, ['user-1:start', 'user-2:start']);
 
   firstGate.resolve();
   await first;
   assert.deepEqual(events, ['user-1:start', 'user-2:start', 'user-1:end']);
+  await nextTurn();
   assert.equal(activeLockCount(), 0);
 });
 
@@ -69,5 +76,6 @@ test('runExclusiveForKey continues the queue after a failure', async () => {
 
   const result = await runExclusiveForKey('user-failure', async () => 'recovered');
   assert.equal(result, 'recovered');
+  await nextTurn();
   assert.equal(activeLockCount(), 0);
 });
