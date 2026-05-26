@@ -6,6 +6,7 @@ import paypal from '@paypal/payouts-sdk';
 const router = Router();
 
 const MIN_WITHDRAW = Number(process.env.MIN_WITHDRAW ?? 10);
+const SUPPORTED_WITHDRAW_METHODS = new Set(['PayPal']);
 
 // Setup PayPal Environment (Sandbox for now)
 const clientId = process.env.PAYPAL_CLIENT_ID;
@@ -51,6 +52,10 @@ router.post('/withdraw', auth, async (req, res) => {
   try {
     const { amount, method, details } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
+
+    if (!SUPPORTED_WITHDRAW_METHODS.has(method)) {
+      return res.status(400).json({ error: 'Unsupported withdrawal method' });
+    }
 
     if (amount < MIN_WITHDRAW) {
       return res

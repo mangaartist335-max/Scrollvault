@@ -13,14 +13,7 @@ import {
 } from '../motion/variants';
 
 const PAYOUT_METHODS = [
-  'PayPal',
-  'TD Bank',
-  'BMO',
-  'PNC Bank',
-  'Chase Bank',
-  'Capital One 360',
-  'Bank of America',
-  'Republic Bank'
+  'PayPal'
 ];
 
 export default function WithdrawScreen() {

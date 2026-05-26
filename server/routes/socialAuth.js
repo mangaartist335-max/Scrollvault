@@ -7,6 +7,12 @@ import supabase from '../db.js';
 const router = Router();
 
 const DEFAULT_FRONTEND = process.env.FRONTEND_URL || 'http://localhost:5173';
+const LOCAL_FRONTEND_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
 
 /** In-memory OAuth state for sign-in (no logged-in user yet). */
 const pending = new Map();
@@ -22,6 +28,35 @@ function publicBaseUrl(req) {
 
 function signToken(userId) {
   return jwt.sign({ sub: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+}
+
+function normalizeOrigin(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function configuredFrontendOrigins() {
+  const origins = [
+    DEFAULT_FRONTEND,
+    ...LOCAL_FRONTEND_ORIGINS,
+    ...(process.env.FRONTEND_URLS || '').split(','),
+  ]
+    .map((value) => normalizeOrigin(value?.trim()))
+    .filter(Boolean);
+  return new Set(origins);
+}
+
+function resolveFrontendBase(candidate) {
+  const fallback = normalizeOrigin(DEFAULT_FRONTEND) || 'http://localhost:5173';
+  const requested = normalizeOrigin(candidate);
+  if (!requested) return fallback;
+  return configuredFrontendOrigins().has(requested) ? requested : fallback;
 }
 
 function createState(provider, extra = {}) {
@@ -106,23 +141,23 @@ async function findOrCreateUser({ email, name }) {
 
 function redirectWithToken(res, frontendBase, token, user) {
   const userJson = encodeURIComponent(JSON.stringify(user));
-  res.redirect(`${frontendBase}/auth/callback#token=${encodeURIComponent(token)}&user=${userJson}`);
+  res.redirect(`${resolveFrontendBase(frontendBase)}/auth/callback#token=${encodeURIComponent(token)}&user=${userJson}`);
 }
 
 function redirectError(res, frontendBase, message) {
-  res.redirect(`${frontendBase}/auth/callback#error=${encodeURIComponent(message)}`);
+  res.redirect(`${resolveFrontendBase(frontendBase)}/auth/callback#error=${encodeURIComponent(message)}`);
 }
 
 function redirectConfigError(res, frontendBase, message, from = 'signup') {
   const path = from === 'login' ? 'login' : 'signup';
-  res.redirect(`${frontendBase}/${path}?social_error=${encodeURIComponent(message)}`);
+  res.redirect(`${resolveFrontendBase(frontendBase)}/${path}?social_error=${encodeURIComponent(message)}`);
 }
 
 // ─── Google ─────────────────────────────────────────────────────────
 
 router.get('/google', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const id = process.env.GOOGLE_CLIENT_ID;
   const secret = process.env.GOOGLE_CLIENT_SECRET;
   if (!id || !secret) {
@@ -212,7 +247,7 @@ router.get('/google/callback', async (req, res) => {
 
 router.get('/facebook', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const id = process.env.META_APP_ID;
   const secret = process.env.META_APP_SECRET;
   if (!id || !secret) {
@@ -284,7 +319,7 @@ router.get('/facebook/callback', async (req, res) => {
 
 router.get('/twitter', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const id = process.env.TWITTER_CLIENT_ID;
   const secret = process.env.TWITTER_CLIENT_SECRET;
   if (!id || !secret) {
@@ -367,7 +402,7 @@ router.get('/twitter/callback', async (req, res) => {
 
 router.get('/tiktok', (req, res) => {
   const fromPage = req.query.from === 'login' ? 'login' : 'signup';
-  const frontendBase = req.query.returnTo || DEFAULT_FRONTEND;
+  const frontendBase = resolveFrontendBase(req.query.returnTo);
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
   if (!clientKey || !clientSecret) {
