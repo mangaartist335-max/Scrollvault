@@ -8,6 +8,8 @@ process.env.FRONTEND_URLS = 'https://app.scrollvault.test,https://preview.scroll
 process.env.JWT_SECRET = 'test-secret';
 process.env.PAYPAL_CLIENT_ID = 'test-client';
 process.env.PAYPAL_CLIENT_SECRET = 'test-secret';
+process.env.SUPABASE_URL = 'https://scrollvault.test.supabase.co';
+process.env.SUPABASE_ANON_KEY = 'test-anon-key';
 delete process.env.GOOGLE_CLIENT_ID;
 delete process.env.GOOGLE_CLIENT_SECRET;
 
