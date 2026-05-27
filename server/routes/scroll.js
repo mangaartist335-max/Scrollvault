@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import auth from '../middleware/auth.js';
 import supabase from '../db.js';
+import { getTiktokEarnedTotal } from '../tiktokSum.js';
 
 const router = Router();
 
@@ -9,6 +10,7 @@ const TIKTOK_EARN_AMOUNT = 0.10;
 const VALID_PLATFORMS = ['instagram', 'tiktok', 'youtube', 'twitter', 'facebook'];
 
 const DAILY_EARN_CAP = Number(process.env.DAILY_EARN_CAP ?? 2.0);
+const TIKTOK_EARN_CAP = Number(process.env.TIKTOK_EARN_CAP ?? 20.0);
 const RATE_LIMIT_MS = Number(process.env.SCROLL_RATE_LIMIT_MS ?? 5000);
 
 /** In-memory map: userId -> last scroll timestamp (ms). */
@@ -70,7 +72,22 @@ router.post('/', auth, async (req, res) => {
 
     const baseEarn = platform === 'tiktok' ? TIKTOK_EARN_AMOUNT : EARN_AMOUNT;
     const remainingToday = DAILY_EARN_CAP - earnedToday;
-    const earned = Number(Math.min(baseEarn, remainingToday).toFixed(2));
+    let remainingLifetime = Infinity;
+
+    if (platform === 'tiktok') {
+      const tiktokEarned = await getTiktokEarnedTotal(supabase, req.userId);
+      remainingLifetime = TIKTOK_EARN_CAP - tiktokEarned;
+
+      if (remainingLifetime <= 0) {
+        return res.status(429).json({
+          error: `TikTok earning cap reached. You have earned $${tiktokEarned.toFixed(2)} from TikTok (max $${TIKTOK_EARN_CAP.toFixed(2)}).`,
+          cap: TIKTOK_EARN_CAP,
+          earnedTotal: Number(tiktokEarned.toFixed(2)),
+        });
+      }
+    }
+
+    const earned = Number(Math.min(baseEarn, remainingToday, remainingLifetime).toFixed(2));
 
     const { data: bal } = await supabase
       .from('balances')
